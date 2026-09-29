@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control de Alimentación – Comedor</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:"Segoe UI",Roboto,system-ui,-apple-system,sans-serif;background:#eef2f7;color:#0f172a;font-size:14px;line-height:1.45}
+.app{display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{width:236px;flex:0 0 236px;background:#0f172a;color:#cbd5e1;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand{display:flex;gap:10px;align-items:center;padding:16px 14px;border-bottom:1px solid #1e293b}
+.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#22d3ee,#0e7490);display:grid;place-items:center;font-size:19px;flex:0 0 auto}
+.brand b{display:block;color:#fff;font-size:13.5px;line-height:1.2}
+.brand small{font-size:11px;color:#94a3b8}
+#nav{padding:10px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+#nav button{all:unset;cursor:pointer;display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;font-size:13.5px;font-weight:500;color:#cbd5e1;transition:.15s}
+#nav button:hover{background:#1e293b;color:#fff}
+#nav button.active{background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;box-shadow:0 6px 16px rgba(8,145,178,.35)}
+
+main{flex:1 1 auto;min-width:0;padding:22px 24px 70px;max-width:1500px}
+.page-head{margin-bottom:18px}
+.page-head h1{margin:0;font-size:22px;letter-spacing:-.02em}
+.page-head p{margin:4px 0 0;color:#64748b;font-size:13.5px}
+.view{display:none}
+.view.active{display:block}
+
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.card h3{margin:0 0 12px;font-size:15px}
+.mt{margin-top:16px}
+.cols{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+
+.grid{display:grid;gap:13px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.field label{display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;font-size:13.5px;background:#fff;color:#0f172a}
+input:focus,select:focus{outline:none;border-color:#0891b2;box-shadow:0 0 0 3px rgba(8,145,178,.15)}
+input.ro{background:#f1f5f9;font-weight:800;color:#0e7490}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn{border:0;cursor:pointer;padding:10px 16px;border-radius:10px;font:inherit;font-weight:600;font-size:13.5px;transition:.15s}
+.btn.primary{background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;box-shadow:0 6px 14px rgba(8,145,178,.3)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:#fff;border:1px solid #cbd5e1;color:#334155}
+.btn.ghost:hover{background:#f8fafc}
+.btn.excel{background:#16a34a;color:#fff}
+.btn.excel:hover{filter:brightness(1.08)}
+.btn.danger{background:#dc2626;color:#fff}
+.hint{font-size:12.5px;color:#64748b;margin:0 0 10px}
+
+/* -------- Carga del día -------- */
+.carga-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.carga-head .field{max-width:200px;flex:1 1 180px}
+.carga-cat{
+  font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;
+  letter-spacing:.06em;padding:12px 0 6px;border-bottom:1px solid #e2e8f0;margin-bottom:2px;
+}
+.carga-cat:first-child{padding-top:0}
+.carga-row{
+  display:grid;grid-template-columns:1fr auto 100px 110px;gap:10px;
+  align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9;
+}
+.carga-row:last-child{border-bottom:0}
+.carga-nombre{font-weight:600;color:#0f172a;font-size:13.5px}
+.carga-precio{color:#64748b;font-size:12.5px;text-align:right;padding-right:6px;white-space:nowrap}
+.carga-qty{
+  padding:9px 8px;border:1.5px solid #cbd5e1;border-radius:9px;
+  text-align:center;font-weight:800;font-size:15px;color:#0f172a;
+  font-variant-numeric:tabular-nums;
+}
+.carga-qty:focus{border-color:#0891b2;box-shadow:0 0 0 3px rgba(8,145,178,.15);outline:none}
+.carga-qty.has{background:#ecfeff;border-color:#0891b2}
+.carga-sub{text-align:right;font-weight:800;color:#0e7490;font-variant-numeric:tabular-nums;font-size:13.5px}
+.carga-sub.zero{color:#cbd5e1;font-weight:600}
+.carga-total{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:16px 4px 4px;margin-top:8px;border-top:2px solid #0f172a;
+}
+.carga-total .lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#64748b}
+.carga-total .val{font-size:24px;font-weight:800;color:#0e7490;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.carga-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+
+/* -------- Tablas -------- */
+.tw{overflow:auto;border:1px solid #e2e8f0;border-radius:12px;max-height:560px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{position:sticky;top:0;background:#f8fafc;text-align:left;padding:10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#64748b;border-bottom:1px solid #e2e8f0;white-space:nowrap;z-index:1}
+tbody td{padding:9px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+tbody tr:hover{background:#f8fafc}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.acc,th.acc{text-align:right;white-space:nowrap}
+.empty{text-align:center;color:#94a3b8;padding:28px}
+.chip{background:#e0f2fe;color:#075985;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.badge{padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.b-warn{background:#fef3c7;color:#92400e}
+.b-ok{background:#dcfce7;color:#166534}
+.b-info{background:#e0e7ff;color:#3730a3}
+.icon{border:0;background:transparent;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:7px}
+.icon:hover{background:#f1f5f9}
+small{color:#94a3b8}
+tfoot td{background:#f8fafc;font-weight:800;border-top:2px solid #e2e8f0}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:15px 16px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.kpi .lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#64748b}
+.kpi .val{font-size:24px;font-weight:800;margin-top:6px;letter-spacing:-.02em}
+.kpi .val.cyan{color:#0e7490}
+.kpi .sub{font-size:11.5px;color:#94a3b8;margin-top:2px}
+
+/* Filtros */
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.filters .field{min-width:135px;flex:1 1 135px}
+.filters .field.wide{flex:2 1 200px}
+.filters .field.auto{flex:0 0 auto}
+.resumen-line{font-size:13px;color:#475569}
+.resumen-line strong{color:#0e7490;font-size:15px}
+
+/* Toast */
+#toast{position:fixed;bottom:22px;right:22px;background:#0f172a;color:#fff;padding:12px 18px;border-radius:11px;font-weight:600;font-size:13.5px;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+#toast.show{opacity:1;transform:translateY(0)}
+
+@media(max-width:900px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;flex:none;height:auto;position:static}
+  #nav{flex-direction:row;overflow-x:auto;padding:8px}
+  #nav button span{display:none}
+  #nav button{font-size:18px;padding:10px 14px}
+  main{padding:16px}
+  .cols,.g2,.g3{grid-template-columns:1fr}
+  .carga-row{grid-template-columns:1fr 80px 90px}
+  .carga-precio{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">🍽️</div>
+      <div><b>Control Alimentación</b><small id="brandSub">Comedor / Manufactura</small></div>
+    </div>
+    <nav id="nav">
+      <button data-view="registro" class="active">➕ <span>Registrar consumo</span></button>
+      <button data-view="movimientos">📋 <span>Movimientos</span></button>
+      <button data-view="resumen">📊 <span>Resumen y totales</span></button>
+      <button data-view="catalogo">🏷️ <span>Precios / Servicios</span></button>
+      <button data-view="datos">⚙️ <span>Datos y respaldo</span></button>
+    </nav>
+  </aside>
+
+  <main>
+
+    <!-- ============ REGISTRO ============ -->
+    <section class="view active" id="view-registro">
+      <div class="page-head">
+        <h1>Registrar consumo</h1>
+        <p>Escribe las cantidades servidas por servicio. Los montos se calculan automáticamente.</p>
+      </div>
+
+      <div class="card">
+        <div class="carga-head">
+          <div class="field"><label>Fecha de consumo</label><input type="date" id="c_fecha"></div>
+          <div style="flex:1"></div>
+          <button class="btn ghost" id="btnHoy">Hoy</button>
+          <button class="btn ghost" id="btnAyer">Ayer</button>
+        </div>
+        <h3 style="margin-bottom:6px">Carga del día</h3>
+        <p class="hint">Ingresa cantidades (ej. 91 en Almuerzo). Deja vacío o 0 los servicios que no apliques.</p>
+        <div id="cargaContainer"></div>
+        <div class="carga-total">
+          <span class="lbl">Total del día</span>
+          <span class="val" id="cargaTotal">Bs 0.00</span>
+        </div>
+        <div class="carga-actions">
+          <button class="btn primary" id="btnGuardarCarga">💾 Guardar consumo del día</button>
+          <button class="btn ghost" id="btnLimpiarCarga">Limpiar</button>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <h3>Últimos movimientos</h3>
+        <div class="tw">
+          <table id="ultimosTabla">
+            <thead><tr><th>Fecha</th><th>Categoría</th><th>Servicio</th><th class="num">Cant.</th><th class="num">P. Unit.</th><th class="num">Total</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ MOVIMIENTOS ============ -->
+    <section class="view" id="view-movimientos">
+      <div class="page-head">
+        <h1>Movimientos</h1>
+        <p>Historial completo de consumos con filtros y exportación a Excel.</p>
+      </div>
+      <div class="card">
+        <div class="filters">
+          <div class="field"><label>Desde</label><input type="date" id="m_desde"></div>
+          <div class="field"><label>Hasta</label><input type="date" id="m_hasta"></div>
+          <div class="field wide"><label>Servicio</label><input id="m_serv" placeholder="Buscar servicio…"></div>
+          <div class="field"><label>Categoría</label><select id="m_cat"><option value="">Todas</option></select></div>
+          <div class="field"><label>Estado</label>
+            <select id="m_estado"><option value="">Todos</option><option>Pendiente</option><option>Descontado</option><option>Pagado</option></select>
+          </div>
+          <div class="field auto"><button class="btn ghost" id="mLimpiar">Limpiar</button></div>
+          <div class="field auto"><button class="btn excel" id="mExportar">⬇ Exportar a Excel</button></div>
+        </div>
+        <div class="resumen-line"><span id="movCount">0 registros</span> &nbsp;·&nbsp; Ítems: <strong id="movItems">0</strong> &nbsp;·&nbsp; Total: <strong id="movTotal">Bs 0.00</strong></div>
+        <div class="tw mt">
+          <table id="movTabla">
+            <thead><tr>
+              <th>Fecha</th><th>Categoría</th><th>Servicio</th>
+              <th class="num">Cant.</th><th class="num">P. Unit.</th><th class="num">Total</th><th>Estado</th><th class="acc"></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RESUMEN ============ -->
+    <section class="view" id="view-resumen">
+      <div class="page-head">
+        <h1>Resumen y totales</h1>
+        <p>Montos acumulados por período, categoría, servicio y día.</p>
+      </div>
+
+      <div class="card">
+        <div class="filters">
+          <div class="field"><label>Desde</label><input type="date" id="r_desde"></div>
+          <div class="field"><label>Hasta</label><input type="date" id="r_hasta"></div>
+          <div class="field auto"><button class="btn ghost" data-rango="hoy">Hoy</button></div>
+          <div class="field auto"><button class="btn ghost" data-rango="semana">Esta semana</button></div>
+          <div class="field auto"><button class="btn ghost" data-rango="mes">Este mes</button></div>
+          <div class="field auto"><button class="btn ghost" data-rango="todo">Todo</button></div>
+          <div class="field auto"><button class="btn excel" id="rExportar">⬇ Exportar a Excel</button></div>
+        </div>
+      </div>
+
+      <div class="kpis mt">
+        <div class="kpi"><div class="lbl">Total facturado</div><div class="val cyan" id="kTotal">Bs 0.00</div><div class="sub">en el período</div></div>
+        <div class="kpi"><div class="lbl">Ítems servidos</div><div class="val" id="kItems">0</div><div class="sub">unidades totales</div></div>
+        <div class="kpi"><div class="lbl">N° de registros</div><div class="val" id="kRegs">0</div><div class="sub">movimientos cargados</div></div>
+        <div class="kpi"><div class="lbl">Días con consumo</div><div class="val" id="kDias">0</div><div class="sub">fechas únicas</div></div>
+        <div class="kpi"><div class="lbl">Promedio / día</div><div class="val" id="kProm">Bs 0.00</div><div class="sub">consumo medio diario</div></div>
+      </div>
+
+      <div class="cols mt">
+        <div class="card">
+          <h3>Totales por categoría</h3>
+          <div class="tw"><table id="resCat">
+            <thead><tr><th>Categoría</th><th class="num">Ítems</th><th class="num">Total (Bs)</th><th class="num">%</th></tr></thead>
+            <tbody></tbody><tfoot></tfoot>
+          </table></div>
+        </div>
+        <div class="card">
+          <h3>Totales por día</h3>
+          <div class="tw"><table id="resDia">
+            <thead><tr><th>Fecha</th><th class="num">Registros</th><th class="num">Ítems</th><th class="num">Total (Bs)</th></tr></thead>
+            <tbody></tbody><tfoot></tfoot>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <h3>Totales por servicio</h3>
+        <div class="tw"><table id="resServ">
+          <thead><tr><th>Categoría</th><th>Servicio</th><th class="num">Cantidad</th><th class="num">P. Prom.</th><th class="num">Total (Bs)</th><th class="num">%</th></tr></thead>
+          <tbody></tbody><tfoot></tfoot>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ============ CATALOGO ============ -->
+    <section class="view" id="view-catalogo">
+      <div class="page-head">
+        <h1>Precios / Servicios</h1>
+        <p>Configura los precios de desayunos, almuerzo, cena y lunches. Puedes cambiarlos cuando quieras.</p>
+      </div>
+      <div class="cols">
+        <div class="card">
+          <h3>Agregar servicio</h3>
+          <form id="formItem" autocomplete="off">
+            <div class="grid g3">
+              <div class="field"><label>Categoría</label><select id="c_categoria"></select></div>
+              <div class="field"><label>Nombre</label><input id="c_nombre" placeholder="Ej. Lunch Ejecutivo" required></div>
+              <div class="field"><label>Precio (Bs)</label><input type="number" id="c_precio" min="0" step="0.01" required></div>
+            </div>
+            <div class="actions"><button class="btn primary" type="submit">Agregar servicio</button></div>
+          </form>
+        </div>
+        <div class="card">
+          <h3>💡 Cómo usarlo</h3>
+          <p class="hint">Edita el precio directamente en la tabla: se guarda al instante. Los precios de los registros ya guardados <b>no cambian</b>, así tus reportes anteriores quedan intactos.</p>
+        </div>
+      </div>
+      <div class="card mt">
+        <h3>Catálogo actual</h3>
+        <div class="tw"><table id="catTabla">
+          <thead><tr><th>Categoría</th><th>Servicio</th><th class="num">Precio (Bs)</th><th class="acc"></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ============ DATOS ============ -->
+    <section class="view" id="view-datos">
+      <div class="page-head">
+        <h1>Datos y respaldo</h1>
+        <p>Tu información se guarda en este navegador. Haz respaldos periódicamente.</p>
+      </div>
+      <div class="cols">
+        <div class="card">
+          <h3>Respaldo</h3>
+          <p class="hint">Descarga un archivo JSON con todos los registros y precios.</p>
+          <div class="actions">
+            <button class="btn primary" id="btnBackup">⬇ Descargar respaldo</button>
+            <button class="btn ghost" id="btnImportar">⬆ Importar respaldo</button>
+            <input type="file" id="fileImport" accept=".json" hidden>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Zona de riesgo</h3>
+          <p class="hint">Estas acciones no se pueden deshacer.</p>
+          <div class="actions">
+            <button class="btn ghost" id="btnBorrarRegs">Borrar todos los registros</button>
+            <button class="btn danger" id="btnReset">Restablecer todo</button>
+          </div>
+        </div>
+      </div>
+      <div class="card mt">
+        <h3>Estado del sistema</h3>
+        <div class="grid g3">
+          <div class="kpi"><div class="lbl">Registros</div><div class="val" id="dRegs">0</div></div>
+          <div class="kpi"><div class="lbl">Servicios en catálogo</div><div class="val" id="dItems">0</div></div>
+          <div class="kpi"><div class="lbl">Días con consumo</div><div class="val" id="dDias">0</div></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   1. UTILIDADES
+   ========================================================= */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const CATS = ['Desayuno', 'Almuerzo', 'Cena', 'Lunch / Refrigerio'];
+
+function hoyISO(){ const d = new Date(), p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function ayerISO(){ const d = new Date(); d.setDate(d.getDate()-1);
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function primerDiaMes(){ const d = new Date(), p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-01`; }
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function money(v){ return 'Bs ' + num(v).toFixed(2); }
+function fechaLegible(f){ if(!f) return ''; const p = f.split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : f; }
+let toastTimer;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2300); }
+
+/* =========================================================
+   2. BASE DE DATOS LOCAL
+   ========================================================= */
+const LS_KEY = 'control_alimentacion_v2';
+
+function datosIniciales(){
+  return {
+    config: { empresa: 'Planta Manufacturera' },
+    catalogo: [
+      { id: uid(), categoria: 'Desayuno', nombre: 'Desayuno Simple',   precio: 8  },
+      { id: uid(), categoria: 'Desayuno', nombre: 'Desayuno Completo', precio: 12 },
+      { id: uid(), categoria: 'Desayuno', nombre: 'Desayuno Especial', precio: 15 },
+      { id: uid(), categoria: 'Almuerzo', nombre: 'Almuerzo',          precio: 20 },
+      { id: uid(), categoria: 'Cena',     nombre: 'Cena',              precio: 14 },
+      { id: uid(), categoria: 'Lunch / Refrigerio', nombre: 'Refrigerio',     precio: 8  },
+      { id: uid(), categoria: 'Lunch / Refrigerio', nombre: 'Lunch Básico',   precio: 12 },
+      { id: uid(), categoria: 'Lunch / Refrigerio', nombre: 'Lunch Especial', precio: 18 }
+    ],
+    registros: []
+  };
+}
+function cargarDB(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){
+      const d = JSON.parse(raw);
+      const base = datosIniciales();
+      return {
+        config:   Object.assign(base.config, d.config || {}),
+        catalogo: Array.isArray(d.catalogo) && d.catalogo.length ? d.catalogo : base.catalogo,
+        registros: Array.isArray(d.registros) ? d.registros : []
+      };
+    }
+  }catch(e){ console.warn('Error al cargar', e); }
+  return datosIniciales();
+}
+function guardarDB(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
+  catch(e){ alert('No se pudo guardar en el navegador.'); }
+}
+
+let db = cargarDB();
+
+/* =========================================================
+   3. NAVEGACIÓN
+   ========================================================= */
+function show(v){
+  $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  $$('.view').forEach(s => s.classList.toggle('active', s.id === 'view-' + v));
+  if(v === 'registro'){ renderCarga(); renderUltimos(); }
+  if(v === 'movimientos') renderMovimientos();
+  if(v === 'resumen') renderResumen();
+  if(v === 'catalogo') renderCatalogo();
+  if(v === 'datos') renderDatos();
+}
+
+/* =========================================================
+   4. CARGA DEL DÍA (núcleo de la app)
+   ========================================================= */
+function renderCarga(){
+  const cont = $('#cargaContainer');
+  let html = '';
+  let any = false;
+  CATS.forEach(cat => {
+    const items = db.catalogo.filter(i => i.categoria === cat);
+    if(!items.length) return;
+    any = true;
+    html += `<div class="carga-cat">${esc(cat)}</div>`;
+    items.forEach(it => {
+      html += `
+        <div class="carga-row" data-item="${it.id}">
+          <div class="carga-nombre">${esc(it.nombre)}</div>
+          <div class="carga-precio">${money(it.precio)}</div>
+          <input type="number" class="carga-qty" min="0" step="1" placeholder="0" inputmode="numeric">
+          <div class="carga-sub zero">Bs 0.00</div>
+        </div>`;
+    });
+  });
+  cont.innerHTML = any ? html : '<p class="hint">Configura servicios en la pestaña «Precios / Servicios».</p>';
+
+  cont.querySelectorAll('.carga-qty').forEach(inp => {
+    inp.addEventListener('input', recalcularCarga);
+    inp.addEventListener('focus', () => inp.select());
+  });
+  recalcularCarga();
+}
+
+function recalcularCarga(){
+  let totalDia = 0;
+  $$('#cargaContainer .carga-row').forEach(row => {
+    const it = db.catalogo.find(i => i.id === row.dataset.item);
+    if(!it) return;
+    const q = Math.max(0, Math.round(num(row.querySelector('.carga-qty').value)));
+    const sub = q * it.precio;
+    totalDia += sub;
+    const subEl = row.querySelector('.carga-sub');
+    subEl.textContent = money(sub);
+    subEl.classList.toggle('zero', sub === 0);
+    row.querySelector('.carga-qty').classList.toggle('has', q > 0);
+  });
+  $('#cargaTotal').textContent = money(totalDia);
+}
+
+$('#btnGuardarCarga').addEventListener('click', () => {
+  const fecha = $('#c_fecha').value || hoyISO();
+  let guardados = 0, total = 0;
+  $$('#cargaContainer .carga-row').forEach(row => {
+    const it = db.catalogo.find(i => i.id === row.dataset.item);
+    if(!it) return;
+    const q = Math.max(0, Math.round(num(row.querySelector('.carga-qty').value)));
+    if(q <= 0) return;
+    const tot = +(q * it.precio).toFixed(2);
+    db.registros.push({
+      id: uid(),
+      fecha,
+      categoria: it.categoria,
+      item: it.nombre,
+      itemId: it.id,
+      cantidad: q,
+      precio: it.precio,
+      total: tot,
+      estado: 'Pendiente',
+      obs: '',
+      creado: Date.now()
+    });
+    guardados++; total += tot;
+  });
+  if(!guardados){ toast('No ingresaste ninguna cantidad'); return; }
+  guardarDB();
+  toast(`✔ ${guardados} servicio(s) guardado(s) — ${money(total)}`);
+  $$('#cargaContainer .carga-qty').forEach(i => { i.value = ''; i.classList.remove('has'); });
+  recalcularCarga();
+  renderTodo();
+});
+
+$('#btnLimpiarCarga').addEventListener('click', () => {
+  $$('#cargaContainer .carga-qty').forEach(i => i.value = '');
+  recalcularCarga();
+});
+
+$('#btnHoy').addEventListener('click', () => { $('#c_fecha').value = hoyISO(); });
+$('#btnAyer').addEventListener('click', () => { $('#c_fecha').value = ayerISO(); });
+
+function renderUltimos(){
+  const regs = [...db.registros].sort((a,b) => (b.creado||0) - (a.creado||0)).slice(0, 10);
+  $('#ultimosTabla tbody').innerHTML = regs.length ? regs.map(r => `
+    <tr>
+      <td>${fechaLegible(r.fecha)}</td>
+      <td><span class="chip">${esc(r.categoria)}</span></td>
+      <td>${esc(r.item)}</td>
+      <td class="num">${r.cantidad}</td>
+      <td class="num">${money(r.precio)}</td>
+      <td class="num"><strong>${money(r.total)}</strong></td>
+    </tr>`).join('')
+    : '<tr><td colspan="6" class="empty">Aún no hay consumos registrados.</td></tr>';
+}
+
+/* =========================================================
+   5. MOVIMIENTOS
+   ========================================================= */
+function filtrarMovimientos(){
+  const d = $('#m_desde').value, h = $('#m_hasta').value;
+  const serv = $('#m_serv').value.trim().toLowerCase();
+  const cat = $('#m_cat').value, est = $('#m_estado').value;
+  return db.registros.filter(r => {
+    if(d && r.fecha < d) return false;
+    if(h && r.fecha > h) return false;
+    if(serv && !r.item.toLowerCase().includes(serv)) return false;
+    if(cat && r.categoria !== cat) return false;
+    if(est && r.estado !== est) return false;
+    return true;
+  }).sort((a,b) => b.fecha.localeCompare(a.fecha) || (b.creado||0) - (a.creado||0));
+}
+
+function renderMovimientos(){
+  const regs = filtrarMovimientos();
+  const total = regs.reduce((s,r) => s + r.total, 0);
+  const items = regs.reduce((s,r) => s + r.cantidad, 0);
+  $('#movCount').textContent = regs.length + (regs.length === 1 ? ' registro' : ' registros');
+  $('#movItems').textContent = items;
+  $('#movTotal').textContent = money(total);
+
+  $('#movTabla tbody').innerHTML = regs.length ? regs.map(r => `
+    <tr>
+      <td>${fechaLegible(r.fecha)}</td>
+      <td><span class="chip">${esc(r.categoria)}</span></td>
+      <td>${esc(r.item)}</td>
+      <td class="num">${r.cantidad}</td>
+      <td class="num">${money(r.precio)}</td>
+      <td class="num"><strong>${money(r.total)}</strong></td>
+      <td>
+        <select data-estado="${r.id}" style="padding:5px 8px;font-size:12px;width:auto;border-radius:7px">
+          ${['Pendiente','Descontado','Pagado'].map(e => `<option ${e===r.estado?'selected':''}>${e}</option>`).join('')}
+        </select>
+      </td>
+      <td class="acc">
+        <button class="icon" data-edit="${r.id}" title="Editar">✏️</button>
+        <button class="icon" data-del="${r.id}" title="Eliminar">🗑️</button>
+      </td>
+    </tr>`).join('')
+    : '<tr><td colspan="8" class="empty">Sin registros para los filtros seleccionados.</td></tr>';
+}
+
+$('#movTabla').addEventListener('change', e => {
+  const sel = e.target.closest('[data-estado]');
+  if(!sel) return;
+  const r = db.registros.find(x => x.id === sel.dataset.estado);
+  if(!r) return;
+  r.estado = sel.value;
+  guardarDB();
+  toast('Estado actualizado');
+});
+
+$('#movTabla').addEventListener('click', e => {
+  const ed = e.target.closest('[data-edit]');
+  const dl = e.target.closest('[data-del]');
+  if(ed){
+    const r = db.registros.find(x => x.id === ed.dataset.edit);
+    if(!r) return;
+    const nq = prompt(`Editar cantidad de "${r.item}" del ${fechaLegible(r.fecha)}\n\nCantidad actual: ${r.cantidad}\nPrecio unitario: ${r.precio}\n\nNueva cantidad:`, r.cantidad);
+    if(nq === null) return;
+    const q = Math.max(0, Math.round(num(nq)));
+    if(q === 0){
+      if(confirm('Cantidad 0 eliminará el registro. ¿Continuar?')){
+        db.registros = db.registros.filter(x => x.id !== r.id);
+        toast('Registro eliminado');
+      } else return;
+    } else {
+      r.cantidad = q;
+      r.total = +(q * r.precio).toFixed(2);
+      toast('Registro actualizado');
+    }
+    guardarDB(); renderTodo();
+  }
+  if(dl){
+    if(!confirm('¿Eliminar este registro?')) return;
+    db.registros = db.registros.filter(x => x.id !== dl.dataset.del);
+    guardarDB(); renderTodo(); toast('Registro eliminado');
+  }
+});
+
+$('#mLimpiar').addEventListener('click', () => {
+  ['m_desde','m_hasta','m_serv'].forEach(id => $('#' + id).value = '');
+  $('#m_cat').value = ''; $('#m_estado').value = '';
+  renderMovimientos();
+});
+['m_desde','m_hasta','m_serv','m_cat','m_estado'].forEach(id =>
+  $('#' + id).addEventListener('input', renderMovimientos));
+$('#mExportar').addEventListener('click', () => exportarExcel(filtrarMovimientos(), 'Movimientos_comedor'));
+
+/* =========================================================
+   6. RESUMEN
+   ========================================================= */
+function regsResumen(){
+  const d = $('#r_desde').value, h = $('#r_hasta').value;
+  return db.registros.filter(r => (!d || r.fecha >= d) && (!h || r.fecha <= h));
+}
+
+function renderResumen(){
+  const regs = regsResumen();
+  const total = regs.reduce((s,r) => s + r.total, 0);
+  const items = regs.reduce((s,r) => s + r.cantidad, 0);
+  const dias  = new Set(regs.map(r => r.fecha)).size;
+
+  $('#kTotal').textContent = money(total);
+  $('#kItems').textContent = items;
+  $('#kRegs').textContent  = regs.length;
+  $('#kDias').textContent  = dias;
+  $('#kProm').textContent  = money(dias ? total / dias : 0);
+
+  /* Por categoría */
+  const catMap = {};
+  regs.forEach(r => {
+    const o = catMap[r.categoria] || (catMap[r.categoria] = { items: 0, total: 0 });
+    o.items += r.cantidad; o.total += r.total;
+  });
+  const catRows = CATS.filter(c => catMap[c]).map(c => [c, catMap[c].items, catMap[c].total]);
+  $('#resCat tbody').innerHTML = catRows.length ? catRows.map(([c, it, t]) => `
+    <tr><td><span class="chip">${esc(c)}</span></td>
+        <td class="num">${it}</td>
+        <td class="num"><strong>${money(t)}</strong></td>
+        <td class="num">${total ? (t / total * 100).toFixed(1) : '0.0'}%</td></tr>`).join('')
+    : '<tr><td colspan="4" class="empty">Sin datos en el período.</td></tr>';
+  $('#resCat tfoot').innerHTML = catRows.length
+    ? `<tr><td>TOTAL</td><td class="num">${items}</td><td class="num">${money(total)}</td><td class="num">100%</td></tr>` : '';
+
+  /* Por día */
+  const diaMap = {};
+  regs.forEach(r => {
+    const o = diaMap[r.fecha] || (diaMap[r.fecha] = { n: 0, items: 0, total: 0 });
+    o.n++; o.items += r.cantidad; o.total += r.total;
+  });
+  const diaRows = Object.entries(diaMap).sort((a,b) => b[0].localeCompare(a[0]));
+  $('#resDia tbody').innerHTML = diaRows.length ? diaRows.map(([f, o]) => `
+    <tr><td>${fechaLegible(f)}</td>
+        <td class="num">${o.n}</td>
+        <td class="num">${o.items}</td>
+        <td class="num"><strong>${money(o.total)}</strong></td></tr>`).join('')
+    : '<tr><td colspan="4" class="empty">Sin datos en el período.</td></tr>';
+  $('#resDia tfoot').innerHTML = diaRows.length
+    ? `<tr><td>TOTAL</td><td class="num">${regs.length}</td><td class="num">${items}</td><td class="num">${money(total)}</td></tr>` : '';
+
+  /* Por servicio */
+  const servMap = {};
+  regs.forEach(r => {
+    const k = r.categoria + '||' + r.item;
+    const o = servMap[k] || (servMap[k] = { categoria: r.categoria, item: r.item, cant: 0, total: 0, sumaPrecio: 0, n: 0 });
+    o.cant += r.cantidad; o.total += r.total; o.sumaPrecio += r.precio; o.n++;
+  });
+  const servRows = Object.values(servMap).sort((a,b) => b.total - a.total);
+  $('#resServ tbody').innerHTML = servRows.length ? servRows.map(o => `
+    <tr>
+      <td><span class="chip">${esc(o.categoria)}</span></td>
+      <td>${esc(o.item)}</td>
+      <td class="num">${o.cant}</td>
+      <td class="num">${money(o.sumaPrecio / o.n)}</td>
+      <td class="num"><strong>${money(o.total)}</strong></td>
+      <td class="num">${total ? (o.total / total * 100).toFixed(1) : '0.0'}%</td>
+    </tr>`).join('')
+    : '<tr><td colspan="6" class="empty">Sin datos en el período.</td></tr>';
+  $('#resServ tfoot').innerHTML = servRows.length
+    ? `<tr><td colspan="2">TOTAL</td><td class="num">${items}</td><td class="num">—</td>
+       <td class="num">${money(total)}</td><td class="num">100%</td></tr>` : '';
+}
+
+['r_desde','r_hasta'].forEach(id => $('#' + id).addEventListener('change', renderResumen));
+$$('[data-rango]').forEach(b => b.addEventListener('click', () => {
+  const hoy = hoyISO();
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  const tipo = b.dataset.rango;
+  if(tipo === 'hoy'){ $('#r_desde').value = hoy; $('#r_hasta').value = hoy; }
+  if(tipo === 'semana'){
+    const dow = (d.getDay() + 6) % 7;
+    const lunes = new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow);
+    $('#r_desde').value = `${lunes.getFullYear()}-${p(lunes.getMonth()+1)}-${p(lunes.getDate())}`;
+    $('#r_hasta').value = hoy;
+  }
+  if(tipo === 'mes'){ $('#r_desde').value = primerDiaMes(); $('#r_hasta').value = hoy; }
+  if(tipo === 'todo'){ $('#r_desde').value = ''; $('#r_hasta').value = ''; }
+  renderResumen();
+}));
+$('#rExportar').addEventListener('click', () => exportarExcel(regsResumen(), 'Resumen_comedor'));
+
+/* =========================================================
+   7. CATÁLOGO
+   ========================================================= */
+function llenarCategorias(){
+  $('#c_categoria').innerHTML = CATS.map(c => `<option>${esc(c)}</option>`).join('');
+  $('#m_cat').innerHTML = '<option value="">Todas</option>' + CATS.map(c => `<option>${esc(c)}</option>`).join('');
+}
+
+function renderCatalogo(){
+  const tbody = $('#catTabla tbody');
+  let html = '';
+  CATS.forEach(cat => {
+    const items = db.catalogo.filter(i => i.categoria === cat);
+    if(!items.length){
+      html += `<tr><td><span class="chip">${esc(cat)}</span></td><td colspan="3" class="empty">Sin servicios</td></tr>`;
+      return;
+    }
+    html += items.map(i => `
+      <tr>
+        <td><span class="chip">${esc(cat)}</span></td>
+        <td>${esc(i.nombre)}</td>
+        <td class="num"><input type="number" step="0.01" min="0" value="${i.precio}" data-precio="${i.id}"
+             style="width:110px;text-align:right;display:inline-block"></td>
+        <td class="acc"><button class="icon" data-delcat="${i.id}" title="Eliminar">🗑️</button></td>
+      </tr>`).join('');
+  });
+  tbody.innerHTML = html;
+}
+
+$('#catTabla').addEventListener('change', e => {
+  const inp = e.target.closest('[data-precio]');
+  if(!inp) return;
+  const it = db.catalogo.find(i => i.id === inp.dataset.precio);
+  if(!it) return;
+  it.precio = +num(inp.value).toFixed(2);
+  guardarDB(); renderCarga(); renderCatalogo();
+  toast('Precio actualizado ✔');
+});
+
+$('#catTabla').addEventListener('click', e => {
+  const b = e.target.closest('[data-delcat]');
+  if(!b) return;
+  if(!confirm('¿Eliminar este servicio del catálogo? Los registros históricos no se modifican.')) return;
+  db.catalogo = db.catalogo.filter(i => i.id !== b.dataset.delcat);
+  guardarDB(); renderCarga(); renderCatalogo();
+});
+
+$('#formItem').addEventListener('submit', e => {
+  e.preventDefault();
+  db.catalogo.push({
+    id: uid(),
+    categoria: $('#c_categoria').value,
+    nombre: $('#c_nombre').value.trim(),
+    precio: +num($('#c_precio').value).toFixed(2)
+  });
+  guardarDB();
+  $('#formItem').reset();
+  renderCarga(); renderCatalogo();
+  toast('Servicio agregado ✔');
+});
+
+/* =========================================================
+   8. DATOS / RESPALDO
+   ========================================================= */
+function renderDatos(){
+  $('#dRegs').textContent  = db.registros.length;
+  $('#dItems').textContent = db.catalogo.length;
+  $('#dDias').textContent  = new Set(db.registros.map(r => r.fecha)).size;
+}
+
+$('#btnBackup').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  descargar(blob, `respaldo_comedor_${hoyISO()}.json`);
+  toast('Respaldo descargado ✔');
+});
+
+$('#btnImportar').addEventListener('click', () => $('#fileImport').click());
+$('#fileImport').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{
+      const d = JSON.parse(fr.result);
+      if(!d || typeof d !== 'object') throw new Error('Formato inválido');
+      if(!confirm('Esto reemplazará los datos actuales. ¿Continuar?')) return;
+      db = {
+        config:   d.config || { empresa: 'Planta Manufacturera' },
+        catalogo: d.catalogo || datosIniciales().catalogo,
+        registros: d.registros || []
+      };
+      guardarDB(); llenarCategorias(); renderTodo();
+      toast('Respaldo importado ✔');
+    }catch(err){ alert('Archivo inválido: ' + err.message); }
+  };
+  fr.readAsText(file);
+  e.target.value = '';
+});
+
+$('#btnBorrarRegs').addEventListener('click', () => {
+  if(!db.registros.length){ toast('No hay registros'); return; }
+  if(!confirm('Se eliminarán TODOS los registros. ¿Continuar?')) return;
+  db.registros = []; guardarDB(); renderTodo(); toast('Registros eliminados');
+});
+
+$('#btnReset').addEventListener('click', () => {
+  if(!confirm('Se borrará TODO (registros y catálogo). ¿Continuar?')) return;
+  db = datosIniciales();
+  guardarDB(); llenarCategorias(); renderTodo();
+  toast('Sistema restablecido');
+});
+
+/* =========================================================
+   9. EXPORTACIÓN A EXCEL
+   ========================================================= */
+function descargar(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+
+function exportarExcel(regs, nombreArchivo){
+  if(!regs || !regs.length){ toast('No hay registros para exportar'); return; }
+
+  const headers = ['Fecha','Categoría','Servicio','Cantidad','Precio Unitario (Bs)','Total (Bs)','Estado','Observaciones'];
+  const filas = regs
+    .slice()
+    .sort((a,b) => a.fecha.localeCompare(b.fecha) || a.categoria.localeCompare(b.categoria))
+    .map(r => [r.fecha, r.categoria, r.item, r.cantidad, r.precio, r.total, r.estado, r.obs || '']);
+
+  if(typeof XLSX === 'undefined'){
+    const sep = ';';
+    const linea = a => a.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(sep);
+    const contenido = [linea(headers), ...filas.map(linea)].join('\r\n');
+    descargar(new Blob(['\ufeff' + contenido], { type: 'text/csv;charset=utf-8;' }), nombreArchivo + '.csv');
+    toast('Exportado como CSV');
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  /* Detalle */
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...filas]);
+  ws['!cols'] = [{wch:11},{wch:19},{wch:22},{wch:10},{wch:17},{wch:12},{wch:12},{wch:26}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Detalle');
+
+  /* Por categoría */
+  const catMap = {};
+  regs.forEach(r => {
+    const o = catMap[r.categoria] || (catMap[r.categoria] = { cant: 0, total: 0 });
+    o.cant += r.cantidad; o.total += r.total;
+  });
+  const catRows = Object.entries(catMap).map(([k,o]) => [k, o.cant, +o.total.toFixed(2)]);
+  const wsCat = XLSX.utils.aoa_to_sheet([['Categoría','Cantidad','Total (Bs)'], ...catRows]);
+  wsCat['!cols'] = [{wch:22},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsCat, 'Por categoría');
+
+  /* Por servicio */
+  const servMap = {};
+  regs.forEach(r => {
+    const k = r.categoria + '||' + r.item;
+    const o = servMap[k] || (servMap[k] = { categoria: r.categoria, item: r.item, cant: 0, total: 0 });
+    o.cant += r.cantidad; o.total += r.total;
+  });
+  const servRows = Object.values(servMap)
+    .sort((a,b) => b.total - a.total)
+    .map(o => [o.categoria, o.item, o.cant, +o.total.toFixed(2)]);
+  const wsServ = XLSX.utils.aoa_to_sheet([['Categoría','Servicio','Cantidad','Total (Bs)'], ...servRows]);
+  wsServ['!cols'] = [{wch:22},{wch:22},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsServ, 'Por servicio');
+
+  /* Por día */
+  const diaMap = {};
+  regs.forEach(r => {
+    const o = diaMap[r.fecha] || (diaMap[r.fecha] = { n: 0, cant: 0, total: 0 });
+    o.n++; o.cant += r.cantidad; o.total += r.total;
+  });
+  const diaRows = Object.entries(diaMap)
+    .sort((a,b) => a[0].localeCompare(b[0]))
+    .map(([k,o]) => [k, o.n, o.cant, +o.total.toFixed(2)]);
+  const wsDia = XLSX.utils.aoa_to_sheet([['Fecha','N° Registros','Cantidad','Total (Bs)'], ...diaRows]);
+  wsDia['!cols'] = [{wch:12},{wch:14},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsDia, 'Por día');
+
+  /* Resumen general */
+  const total = regs.reduce((s,r) => s + r.total, 0);
+  const items = regs.reduce((s,r) => s + r.cantidad, 0);
+  const dias  = new Set(regs.map(r => r.fecha)).size;
+  const wsRes = XLSX.utils.aoa_to_sheet([
+    ['RESUMEN GENERAL DEL PERÍODO'],
+    [],
+    ['Total facturado (Bs)', +total.toFixed(2)],
+    ['Total ítems servidos', items],
+    ['N° de registros', regs.length],
+    ['Días con consumo', dias],
+    ['Promedio por día (Bs)', +(dias ? total/dias : 0).toFixed(2)],
+    [],
+    ['Generado', new Date().toLocaleString('es-BO')]
+  ]);
+  wsRes['!cols'] = [{wch:34},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen');
+
+  XLSX.writeFile(wb, `${nombreArchivo}_${hoyISO()}.xlsx`);
+  toast('Excel generado ✔');
+}
+
+/* =========================================================
+   10. INICIALIZACIÓN
+   ========================================================= */
+function renderTodo(){
+  renderCarga();
+  renderUltimos();
+  renderMovimientos();
+  renderResumen();
+  renderCatalogo();
+  renderDatos();
+}
+
+function init(){
+  $('#c_fecha').value  = hoyISO();
+  $('#m_hasta').value  = hoyISO();
+  $('#r_desde').value  = primerDiaMes();
+  $('#r_hasta').value  = hoyISO();
+  $('#brandSub').textContent = db.config.empresa || 'Comedor / Manufactura';
+
+  llenarCategorias();
+  $$('#nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+
+  renderTodo();
+  show('registro');
+}
+
+init();
+</script>
+</body>
+</html>
